@@ -1,0 +1,303 @@
+import mxnet as mx
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+def make_upsample_sym(left_img):
+   
+  
+    # group 1
+    conv1_1 = mx.symbol.Convolution(data=left_img, kernel=(3, 3), pad=(1, 1), num_filter=64, name="conv1_1")
+    relu1_1 = mx.symbol.Activation(data=conv1_1, act_type="relu", name="relu1_1")
+    pool1 = mx.symbol.Pooling(
+        data=relu1_1, pool_type="max", kernel=(2, 2), stride=(2,2), name="pool1")
+    
+    # group 2
+    conv2_1 = mx.symbol.Convolution(
+        data=pool1, kernel=(3, 3), pad=(1, 1), num_filter=128, name="conv2_1")
+    relu2_1 = mx.symbol.Activation(data=conv2_1, act_type="relu", name="relu2_1")
+    pool2 = mx.symbol.Pooling(
+        data=relu2_1, pool_type="max", kernel=(2, 2), stride=(2,2), name="pool2")
+    
+    # group 3
+    conv3_1 = mx.symbol.Convolution(
+        data=pool2, kernel=(3, 3), pad=(1, 1), num_filter=256, name="conv3_1")
+    relu3_1 = mx.symbol.Activation(data=conv3_1, act_type="relu", name="relu3_1")
+    conv3_2 = mx.symbol.Convolution(
+        data=relu3_1, kernel=(3, 3), pad=(1, 1), num_filter=256, name="conv3_2")
+    
+    relu3_2 = mx.symbol.Activation(data=conv3_2, act_type="relu", name="relu3_2")
+    pool3 = mx.symbol.Pooling(
+        data=relu3_2, pool_type="max", kernel=(2, 2), stride=(2,2), name="pool3")
+    
+    # group 4
+    conv4_1 = mx.symbol.Convolution(
+        data=pool3, kernel=(3, 3), pad=(1, 1), num_filter=512, name="conv4_1")
+    relu4_1 = mx.symbol.Activation(data=conv4_1, act_type="relu", name="relu4_1")
+    
+    conv4_2 = mx.symbol.Convolution(
+        data=relu4_1, kernel=(3, 3), pad=(1, 1), num_filter=512, name="conv4_2")
+    relu4_2 = mx.symbol.Activation(data=conv4_2, act_type="relu", name="relu4_2")
+    
+    pool4 = mx.symbol.Pooling(
+        data=relu4_2, pool_type="max", kernel=(2, 2), stride=(2,2), name="pool4")
+    
+    # group 5
+    conv5_1 = mx.symbol.Convolution(
+        data=pool4, kernel=(3, 3), pad=(1, 1), num_filter=512, name="conv5_1")
+    relu5_1 = mx.symbol.Activation(data=conv5_1, act_type="relu", name="relu5_1")
+    
+    conv5_2 = mx.symbol.Convolution(
+        data=relu5_1, kernel=(3, 3), pad=(1, 1), num_filter=512, name="conv5_2")
+    relu5_2 = mx.symbol.Activation(data=conv5_2, act_type="relu", name="conv1_2")
+    
+    pool5 = mx.symbol.Pooling(
+        data=relu5_2, pool_type="max", kernel=(2, 2), stride=(2,2), name="pool5")
+    
+    # group 6
+    flatten = mx.symbol.Flatten(data=pool5, name="flatten")
+    fc6 = mx.symbol.FullyConnected(data=flatten, num_hidden=512, name="fc6")
+    relu6 = mx.symbol.Activation(data=fc6, act_type="relu", name="relu6")
+    drop6 = mx.symbol.Dropout(data=relu6, p=0.5, name="drop6")
+    # group 7
+    fc7 = mx.symbol.FullyConnected(data=drop6, num_hidden=512, name="fc7")
+    relu7 = mx.symbol.Activation(data=fc7, act_type="relu", name="relu7")
+    drop7 = mx.symbol.Dropout(data=relu7, p=0.5, name="drop7")
+    # output
+    fc8 = mx.symbol.FullyConnected(data=drop7, num_hidden=33*12*5, name="pred5")
+
+    pred5 = mx.symbol.Reshape(data=fc8, target_shape=(0, 33, 5, 12))
+    bn_pool4 = mx.sym.BatchNorm(data=pool4, cudnn_off=1,name='bn_pool4')
+    pred4 = mx.symbol.Convolution(data=bn_pool4, kernel=(3,3), pad=(1,1), num_filter=33, name="pred4")
+    bn_pool3 = mx.sym.BatchNorm(data=pool3, cudnn_off=1, name='bn_pool3')
+    pred3 = mx.symbol.Convolution(data=bn_pool3, kernel=(3,3), pad=(1,1), num_filter=33, name="pred3")
+    bn_pool2 = mx.sym.BatchNorm(data=pool2, cudnn_off=1, name='bn_pool2')
+    pred2 = mx.symbol.Convolution(data=bn_pool2, kernel=(3,3), pad=(1,1), num_filter=33, name="pred2")
+    bn_pool1 = mx.sym.BatchNorm(data=pool1, cudnn_off=1, name='bn_pool1')
+    pred1 = mx.symbol.Convolution(data=bn_pool1, kernel=(3,3), pad=(1,1), num_filter=33, name="pred1")
+
+    ####
+    scale = 1
+    pred1 = mx.symbol.Activation(data=pred1, act_type='relu')
+    pred1 = mx.symbol.Deconvolution(data=pred1, kernel=(1, 1), stride=(1, 1), pad=(0, 0), num_filter=33, no_bias=0, cudnn_off=1, name='deconv_pred1')
+    #print ("pred1=",pred1,"pred1.shape = ",np.array(pred1).shape, "ndim=",np.array(pred1).ndim)
+   
+    
+    scale *= 2
+    pred2 = mx.symbol.Activation(data=pred2, act_type='relu')
+    pred2 = mx.symbol.Deconvolution(data=pred2, kernel=(2*scale, 2*scale), stride=(scale, scale), pad=(1, 1), num_filter=33, no_bias=0, cudnn_off=1, name='deconv_pred2')
+    #print ("pred2.shape=",np.array(pred2).shape,"ndim=",np.array(pred2).ndim)
+    
+    scale *= 2
+    pred3 = mx.symbol.Activation(data=pred3, act_type='relu')
+    pred3 = mx.symbol.Deconvolution(data=pred3, kernel=(2*scale, 2*scale), stride=(scale, scale), pad=(2, 2), num_filter=33, no_bias=0, cudnn_off=1, name='deconv_pred3')
+    #print ("pred3.shape=",np.array(pred3).shape,"ndim=",np.array(pred3).ndim)
+    
+    scale *= 2
+    pred4 = mx.symbol.Activation(data=pred4, act_type='relu')
+    pred4 = mx.symbol.Deconvolution(data=pred4, kernel=(2*scale, 2*scale), stride=(scale, scale), pad=(4, 4), num_filter=33,  no_bias=0, cudnn_off=1, name='deconv_pred4')
+    #print ("pred4.shape=",np.array(pred4).shape,"ndim=",np.array(pred4).ndim)
+    
+    scale *= 2
+    pred5 = mx.symbol.Activation(data=pred5, act_type='relu')
+    pred5 = mx.symbol.Deconvolution(data=pred5, kernel=(2*scale, 2*scale), stride=(scale, scale), pad=(8, 8), num_filter=33,  no_bias=0, cudnn_off=1, name='deconv_pred5')
+    #print ("pred5.shape=",np.array(pred5).shape,"ndim=",np.array(pred5).ndim)
+    
+    feat = mx.symbol.ElementWiseSum(pred1, pred2, pred3, pred4, pred5)
+    feat_act = mx.symbol.Activation(data=feat, act_type='relu', name='feat_relu')
+    scale = 2
+    up = mx.symbol.Deconvolution(data=feat_act, kernel=(2*scale, 2*scale), stride=(scale, scale), pad=(1, 1), num_filter=33,  no_bias=0, cudnn_off=1, name='deconv_predup')
+    up = mx.symbol.Activation(data=up, act_type='relu')
+    up = mx.symbol.Convolution(data=up, kernel=(3,3), pad=(1,1), num_filter=33)
+    
+    
+    return up, [pred1, pred2, pred3, pred4, pred5]
+ 
+    
+
+def get_right_sym(data):
+    #train_data = train_loader.data
+    #print(data)
+    left_img = data
+    left_img = mx.symbol.Variable(name="left_img")
+    #train_label = train_loader.label
+    #train_label = mx.symbol.Variable(name="train_data")  #train_data = left_img
+    upsample = 1
+    scale = (0, 64)
+    
+    data, _ = make_upsample_sym(left_img)
+    softmax = mx.symbol.SoftmaxActivation(data=data, mode='channel', name='softmax')
+   
+    
+    #depthdot is the synthesis right image
+    depthdot = mx.symbol.DepthDot(data=softmax, label=left_img, scale=scale, upsample=upsample, name='depth')
+    
+        
+    #loss = mx.symbol.MAERegressionOutput(data=depthdot, name='l1')
+    #return mx.symbol.Group([depthdot,loss])
+    return depthdot,('left_img',),('left_img',)
+    
+"""     
+def mx.sym.Convolution(data, kernel, stride=(1,1), pad=(0,0), num_filter,name=None):
+    conv = mx.symbol.Convolution(data=data,  kernel=kernel, stride=stride, pad=pad,num_filter=num_filter, name='conv_%s' %name)
+    #bn = mx.sym.BatchNorm(data=conv, name='bn_%s%s' %name)
+    act = mx.sym.Activation(data=conv, act_type='relu', name='relu_%s%'%name)
+    return act
+"""
+def get_disp_sym(depth,left_img):
+   
+    pad = (0,0)
+   
+    
+    right_img = mx.symbol.Variable(name="depth") 
+    left_img = mx.symbol.Variable(name="left_img")  
+     # group 1
+    conv1_r = mx.symbol.Convolution(data=right_img,kernel=(7, 7),stride=(2,2), pad=pad,  num_filter=64, name='conv1_r')
+    relu1_r = mx.symbol.Activation(data=conv1_r, act_type='relu', name='relu1_r')
+    pool1_r = mx.symbol.Pooling(data=relu1_r, pool_type="max", kernel=(2, 2), stride=(2,2), name="pool1_r")
+    
+    conv1_l = mx.symbol.Convolution(data=left_img, kernel=(7, 7),stride=(2,2) , pad=pad,  num_filter=64,name='conv_1_l')
+    relu1_l = mx.symbol.Activation(data=conv1_l, act_type='relu', name='relu1_l')
+    pool1_l = mx.symbol.Pooling(data=relu1_l, pool_type="max", kernel=(2, 2), stride=(2,2), name="pool1_l")
+
+    # group 2
+    conv2_r = mx.symbol.Convolution(data=pool1_r, kernel=(5, 5),stride=(2,2) , pad=pad,num_filter=128, name='conv2_r')
+    relu2_r = mx.symbol.Activation(data=conv2_r, act_type='relu', name='relu2_r')
+    pool2_r = mx.symbol.Pooling(data=relu2_r, pool_type="max", kernel=(2, 2), stride=(2,2), name="pool3_r")
+     
+    conv2_l = mx.symbol.Convolution(data=pool1_l,  kernel=(5, 5),stride=(2,2) , pad=pad, num_filter=128,name='conv2_l')
+    relu2_l = mx.symbol.Activation(data=conv2_l, act_type='relu', name='relu2_l')
+    pool2_l = mx.symbol.Pooling(data=relu2_l, pool_type="max", kernel=(2, 2), stride=(2,2), name="pool2_l")
+
+    
+    #correlation
+    conv_corr = mx.symbol.Correlation(data1=conv2_r, data2=conv2_l,name="correlation")
+    conv_l = mx.symbol.Convolution(data=conv2_l, kernel=(5, 5),stride=(2,2) , pad=pad, num_filter=128, name='conv_l')
+    #relu_l = mx.sym.Activation(data=conv_l, act_type='relu', name='relu_l')
+
+    # concatenate
+    conc = mx.symbol.concat(conv_corr, conv_l, name="concatenate")
+
+    # group 3 --(encoder-decoder)
+    conv3_1 =mx.symbol.Convolution(data=conc, kernel=(5, 5),stride=(2,2),  pad=pad,num_filter=128, name='conv3_1')
+    relu3_1 = mx.symbol.Activation(data=conv3_1, act_type='relu', name='relu3_1')
+    conv3_2 = mx.symbol.Convolution(data=relu3_1, kernel=(3, 3),stride=(1,1) , pad=pad,num_filter=256, name='conv3_2')
+    relu3_2 = mx.symbol.Activation(data=conv3_2, act_type='relu', name='relu3_2')
+    pool3 = mx.symbol.Pooling(data=relu3_2, pool_type="max", kernel=(2, 2), stride=(2,2), name="pool3")
+
+    # group 4 --(encoder-decoder)
+    conv4_1 = mx.symbol.Convolution(data=pool3, kernel=(3, 3),stride=(2,2), pad=pad, num_filter=512, name='conv4_1')
+    relu4_1 = mx.symbol.Activation(data=conv4_1, act_type='relu', name='relu4_1')
+    conv4_2 = mx.symbol.Convolution(data=relu4_1, kernel=(3, 3),stride=(1,1) , pad=pad,num_filter=512, name='conv4_2')
+    relu4_2 = mx.symbol.Activation(data=conv4_2, act_type='relu', name='relu4_2')
+    pool4 = mx.symbol.Pooling(data=relu4_2, pool_type="max", kernel=(2, 2), stride=(2,2), name="pool4")
+    
+
+    # group 5 --(encoder-decoder)
+    conv5_1 = mx.symbol.Convolution(data=pool4, kernel=(3, 3),stride=(2,2), pad=pad, num_filter=512, name="conv5_1")
+    relu5_1 = mx.symbol.Activation(data=conv5_1, act_type='relu', name='relu5_1')
+    conv5_2 = mx.symbol.Convolution(data=relu5_1, kernel=(3, 3),stride=(1,1) , pad=pad,num_filter=512, name='conv5_2')
+    relu5_2 = mx.symbol.Activation(data=conv5_2, act_type='relu', name='relu5_2')
+    pool5 = mx.symbol.Pooling(data=relu5_2, pool_type="max", kernel=(2, 2), stride=(2,2), name="pool5")
+
+    # group 6 --(encoder-decoder)
+    conv6_1 = mx.symbol.Convolution(data=pool5, kernel=(3, 3),stride=(2,2), pad=pad, num_filter=1024, name="conv6_1")
+    relu6_1 = mx.symbol.Activation(data=conv6_1, act_type='relu', name='relu6_1')
+    conv6_2 = mx.symbol.Convolution(data=relu6_1, kernel=(3, 3),stride=(1,1) , pad=pad,num_filter=1024, name='conv6_2')
+    relu6_2 = mx.symbol.Activation(data=conv6_2, act_type='relu', name='relu6_2')
+    pool6 = mx.symbol.Pooling(data=relu6_2, pool_type="max", kernel=(2, 2), stride=(2,2), name="pool6")
+
+    pr6 = mx.symbol.Convolution(data=pool6, kernel=(3, 3),stride=(1,1) , pad=pad,num_filter=1, name="pr6")
+   
+    #loss6 = mx.symbol.MAERegressionOutput(data=pr6, label=left_img, name='loss6_l1')
+
+    #upconv5
+    upconv5_1 = mx.symbol.Deconvolution(data=pool6, kernel=(4, 4),stride=(2,2) ,num_filter=512, name="upconv5_1")
+    relu_up5_1 = mx.symbol.Activation(data=upconv5_1, act_type='relu', name='relu_up5_1')
+    
+    conc5_1 =  mx.symbol.concat(relu_up5_1, pr6, name="conc5_1")
+    conc5_2 =  mx.symbol.concat(conc5_1, conv5_2, name="conc5_2")
+    iconv5 =  mx.symbol.Convolution(data=conc5_2, kernel=(3, 3),stride=(1,1) ,num_filter=512, name="iconv5")
+    relu_up5 = mx.symbol.Activation(data=iconv5, act_type='relu', name='relu_up5')
+    pool_up5 = mx.symbol.Pooling(data=relu_up5, pool_type="max", kernel=(2, 2), stride=(2,2), name="pool_up5")
+
+   
+    pr5 = mx.symbol.Convolution(data=pool_up5, kernel=(3, 3),stride=(1,1) ,num_filter=1, name="pr5")
+    
+    #loss5 = mx.symbol.MAERegressionOutput(data=pr5, label=left_img, name='loss5_l1')
+
+    #upconv4
+    upconv4_1 = mx.symbol.Deconvolution(data=pool_up5, kernel=(4, 4),stride=(2,2) ,num_filter=256, name="upconv4_1")
+    relu_up4_1 = mx.symbol.Activation(data=upconv4_1, act_type='relu', name='relu_up4_1')
+    conc4_1 =  mx.symbol.concat(upconv4_1, pr5, name="conc4_1")
+    conc4_2 =  mx.symbol.concat(conc4_1, conv4_2, name="conc4_2")
+    iconv4 =  mx.symbol.Convolution(data=conc4_2, kernel=(3, 3),stride=(1,1) ,num_filter=256, name="iconv4")
+    relu_up4 = mx.symbol.Activation(data=iconv4, act_type='relu', name='relu_up4')
+    pool_up4 = mx.symbol.Pooling(data=relu_up4, pool_type="max", kernel=(2, 2), stride=(2,2), name="pool_up4")
+    
+    pr4 = mx.symbol.Convolution(data=pool_up4, kernel=(3, 3),stride=(1,1) ,num_filter=1, name="pr4")
+   
+    #loss4 = mx.symbol.MAERegressionOutput(data=pr4, label=left_img, name='loss4_l1')
+
+     #upconv3
+    upconv3_1 = mx.symbol.Deconvolution(data=pool_up4, kernel=(4, 4),stride=(2,2) ,num_filter=128, name="upconv3_1")
+    relu_up3_1 = mx.symbol.Activation(data=upconv3_1, act_type='relu', name='relu_up3_1')
+    conc3_1 =  mx.symbol.concat(upconv3_1, pr4, name="conc3_1")
+    conc3_2 =  mx.symbol.concat(conc3_1, conv3_2, name="conc3_2")
+    iconv3 =  mx.symbol.Convolution(data=conc3_2, kernel=(3, 3),stride=(1,1) ,num_filter=128, name="iconv3")
+    relu_up3 = mx.symbol.Activation(data=iconv3, act_type='relu', name='relu_up3')
+    pool_up3 = mx.symbol.Pooling(data=relu_up3, pool_type="max", kernel=(2, 2), stride=(2,2), name="pool_up3")
+
+    pr3 = mx.symbol.Convolution(data=pool_up3, kernel=(3, 3),stride=(1,1) ,num_filter=1, name="pr3")
+   
+    #loss3 = mx.symbol.MAERegressionOutput(data=pr3, label=left_img, name='loss3_l1')
+
+     #upconv2
+    upconv2_1 = mx.symbol.Deconvolution(data=pool_up3, kernel=(4, 4),stride=(2,2) ,num_filter=64, name="upconv2_1")
+    relu_up2_1 = mx.symbol.Activation(data=upconv2_1, act_type='relu', name='relu_up2_1')
+    conc2_1 =  mx.symbol.concat(upconv3_1, pr3, name="conc2_1")
+    conc2_2 =  mx.symbol.concat(conc2_1, conv2_r, name="conc2_2")
+    iconv2 =  mx.symbol.Convolution(data=conc2_2, kernel=(3, 3),stride=(1,1) ,num_filter=64, name="iconv2")
+    relu_up2 = mx.symbol.Activation(data=iconv2, act_type='relu', name='relu_up2')
+    pool_up2 = mx.symbol.Pooling(data=relu_up2, pool_type="max", kernel=(2, 2), stride=(2,2), name="pool_up2")
+
+    pr2 = mx.symbol.Convolution(data=pool_up2, kernel=(3, 3),stride=(1,1) ,num_filter=1, name="pr2")
+   
+    #loss2 = mx.symbol.MAERegressionOutput(data=pr2, label=left_img, name='loss2_l1')
+
+    #upconv1
+    upconv1_1 = mx.symbol.Deconvolution(data=pool_up2, kernel=(4, 4),stride=(2,2) ,num_filter=32, name="upconv1_1")
+    relu_up1_1 = mx.symbol.Activation(data=upconv1_1, act_type='relu', name='relu_up1_1')
+    conc1_1 =  mx.symbol.concat(upconv1_1, pr2, name="conc1_1")
+    conc1_2 =  mx.symbol.concat(conc1_1, conv1_r, name="conc1_2")
+    iconv1 =  mx.symbol.Convolution(data=conc1_2, kernel=(3, 3),stride=(1,1) ,num_filter=32, name="iconv1")
+    relu_up1 = mx.symbol.Activation(data=iconv1, act_type='relu', name='relu_up1')
+    pool_up1 = mx.symbol.Pooling(data=relu_up1, pool_type="max", kernel=(2, 2), stride=(2,2), name="pool_up1")
+
+    pr1 = mx.symbol.Convolution(data=pool_up1, kernel=(3, 3),stride=(1,1) ,num_filter=1, name="pr1")
+    
+    #loss1 = mx.symbol.MAERegressionOutput(data=pr1, label=left_img, name='loss1_l1')
+
+    # #upconv0
+    upconv0_1 = mx.symbol.Deconvolution(data=pool_up1, kernel=(4, 4),stride=(2,2) ,num_filter=16, name="upconv0_1")
+    relu_up0_1 = mx.symbol.Activation(data=upconv0_1, act_type='relu', name='relu_up0_1')
+    conc0_1 =  mx.symbol.concat(upconv0_1, pr1, name="conc0_1")
+    conc0_2 =  mx.symbol.concat(conc0_1, left_img, name="conc0_2")
+    iconv0 =  mx.symbol.Convolution(data=conc0_2, kernel=(3, 3),stride=(1,1) ,num_filter=32, name="iconv0")
+    relu_up0 = mx.symbol.Activation(data=iconv0, act_type='relu', name='relu_up0')
+    pool_up0 = mx.symbol.Pooling(data=relu_up0, pool_type="max", kernel=(2, 2), stride=(2,2), name="pool_up0")
+
+
+    pr0 = mx.symbol.Convolution(data=relu_up0, kernel=(3, 3),stride=(1,1) ,num_filter=1, name="pr0")
+   
+    loss0 = mx.symbol.MAERegressionOutput(data=pr0, name='loss0_l1')
+
+    #return loss0,pr0
+    return mx.symbol.Group([pr0,loss0])
+    
+
+    
+
+    
+    
+

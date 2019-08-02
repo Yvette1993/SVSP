@@ -1,0 +1,90 @@
+"""
+
+
+"""
+
+
+
+version: 1
+pruners:
+  SVS:
+    class: 'SensitivityPruner'
+    sensitivities:
+      'module.conv1_1.weight': 0.25    #VSN-conv1_1
+      'module.conv3_2.weight': 0.35    #VSN-conv3_2
+      'module.conv5_1.weight': 0.40    #VSN-conv5_1
+      'module.conv6_1.weight': 0.45    #VSN-conv6_1
+      'module.conv8_1.weight': 0.55   #VSN-conv8_1 
+      'module.conv3a.weight': 0.55   #SM-conv3a
+      'module.conv4a.weight': 0.55   #SM-conv4a
+      'module.conv5a.weight': 0.55   #SM-conv5a
+      'module.conv6a.weight': 0.55   #SM-conv6a
+      'module.iconv5.weight': 0.55   #SM-iconv5
+      'module.iconv4.weight': 0.55   #SM-iconv4
+      'module.iconv3.weight': 0.55   #SM-iconv3
+      'module.iconv2.weight': 0.55   #SM-iconv2
+      'module.iconv1.weight': 0.55   #SM-iconv1
+      'module.iconv0.weight': 0.55   #SM-iconv0
+
+      'classifier.0.weight': 0.875   #VSN-soft  ??
+
+
+regularizers:
+  svs_regularizer:
+    class: GroupLassoRegularizer
+    reg_regims:
+      'module.conv1_1.weight': [0.00005, '3D']
+      'module.conv3_2.weight': [0.00005, '3D']
+      'module.conv5_1.weight': [0.00005, '3D']
+      'module.conv6_1.weight': [0.00005, '3D']
+      'module.conv8_1.weight': [0.00005, '3D']
+      'module.conv3a.weight': [0.00005, '3D']
+      'module.conv4a.weight': [0.00005, '3D']
+      'module.conv5a.weight': [0.00005, '3D']
+      'module.conv6a.weight': [0.00005, '3D']
+      'module.iconv5.weight': [0.00005, '3D']
+      'module.iconv4.weight': [0.00005, '3D']
+      'module.iconv3.weight': [0.00005, '3D']
+      'module.iconv2.weight': [0.00005, '3D']
+      'module.iconv1.weight': [0.00005, '3D']
+      'module.iconv0.weight': [0.00005, '3D']
+    threshold_criteria: Mean_Abs
+
+quantizers:
+  svs_quantizer:
+    class: DorefaQuantizer
+    bits_activations: 8
+    bits_weights: 4
+  
+
+
+lr_schedulers:
+   pruning_lr:
+     class: ExponentialLR
+     gamma: 0.9
+
+policies:
+  - pruner:
+      instance_name : 'SVS'
+    starting_epoch: 0	
+    ending_epoch: 38
+    frequency: 1
+
+  - regularizer:
+      instance_name: svs_regularizer
+    starting_epoch: 0
+    ending_epoch: 60
+    frequency: 1
+
+
+  - quantizer:
+      instance_name: svs_quantizer
+      starting_epoch: 0
+      ending_epoch: 200
+      frequency: 1
+
+  - lr_scheduler:
+      instance_name: pruning_lr
+    starting_epoch: 24
+    ending_epoch: 200
+    frequency: 1

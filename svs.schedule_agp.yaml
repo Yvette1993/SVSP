@@ -1,0 +1,304 @@
+"""
+
+
+"""
+
+
+
+version: 1
+pruners:
+  ##vsn
+  pool1_pruner:
+    class : 'AutomatedGradualPruner'
+    initial_sparsity : 0.03
+    final_sparsity: 0.62
+    weights: ['module.conv1_1.weight']
+
+  pool3_pruner:
+    class : 'AutomatedGradualPruner'
+    initial_sparsity : 0.03
+    final_sparsity: 0.45
+    weights: ['module.conv3_2.weight']
+
+  drop7_pruner: conv3a_pruner:
+    class : 'AutomatedGradualPruner'
+    initial_sparsity : 0.03
+    final_sparsity: 0.45
+    weights: ['module.conv5_1.weight']
+
+  pred5_pruner:
+    class : 'AutomatedGradualPruner'
+    initial_sparsity : 0.03
+    final_sparsity: 0.45
+    weights: ['module.conv6_1.weight']
+
+  pred3_pruner:
+    class : 'AutomatedGradualPruner'
+    initial_sparsity : 0.03
+    final_sparsity: 0.45
+    weights: ['module.conv8_1.weight']
+
+#  pred1_pruner:
+#    class : 'AutomatedGradualPruner'
+#    initial_sparsity : 0.03
+#    final_sparsity: 0.65
+#    weights: ['feature.module.12.weight']
+
+#  conv1_pruner:
+#    class : 'AutomatedGradualPruner'
+#    initial_sparsity : 0.03
+#    final_sparsity: 0.65
+#    weights: ['feature.module.18.weight']
+
+
+  conv3a_pruner:
+    class : 'AutomatedGradualPruner'
+    initial_sparsity : 0.03
+    final_sparsity: 0.45
+    weights: ['module.conv3a.weight']
+
+  conv4a_pruner:
+    class : 'AutomatedGradualPruner'
+    initial_sparsity : 0.03
+    final_sparsity: 0.45
+    weights: ['module.conv4a.weight']
+
+  conv5a_pruner:
+    class : 'AutomatedGradualPruner'
+    initial_sparsity : 0.03
+    final_sparsity: 0.45
+    weights: ['module.conv5a.weight']
+
+  conv6a_pruner:
+    class : 'AutomatedGradualPruner'
+    initial_sparsity : 0.03
+    final_sparsity: 0.45
+    weights: ['module.conv6a.weight']
+
+
+  iconv5_pruner:
+    class : 'AutomatedGradualPruner'
+    initial_sparsity : 0.03
+    final_sparsity: 0.45
+    weights: ['module.iconv5.weight']
+
+  iconv4_pruner:
+    class : 'AutomatedGradualPruner'
+    initial_sparsity : 0.03
+    final_sparsity: 0.45
+    weights: ['module.iconv4.weight']
+
+  iconv3_pruner:
+    class : 'AutomatedGradualPruner'
+    initial_sparsity : 0.03
+    final_sparsity: 0.45
+    weights: ['module.iconv3.weight']
+
+  iconv2_pruner:
+    class : 'AutomatedGradualPruner'
+    initial_sparsity : 0.03
+    final_sparsity: 0.45
+    weights: ['module.iconv2.weight']
+
+  iconv1_pruner:
+    class : 'AutomatedGradualPruner'
+    initial_sparsity : 0.03
+    final_sparsity: 0.45
+    weights: ['module.iconv1.weight']
+
+  iconv0_pruner:
+    class : 'AutomatedGradualPruner'
+    initial_sparsity : 0.03
+    final_sparsity: 0.45
+    weights: ['module.iconv0.weight']
+
+regularizers:
+  svs_regularizer:
+    class: GroupLassoRegularizer
+    reg_regims:
+      'module.conv1_1.weight': [0.00005, '3D']
+      'module.conv3_2.weight': [0.00005, '3D']
+      'module.conv5_1.weight': [0.00005, '3D']
+      'module.conv6_1.weight': [0.00005, '3D']
+      'module.conv8_1.weight': [0.00005, '3D']
+      'module.conv3a.weight': [0.00005, '3D']
+      'module.conv4a.weight': [0.00005, '3D']
+      'module.conv5a.weight': [0.00005, '3D']
+      'module.conv6a.weight': [0.00005, '3D']
+      'module.iconv5.weight': [0.00005, '3D']
+      'module.iconv4.weight': [0.00005, '3D']
+      'module.iconv3.weight': [0.00005, '3D']
+      'module.iconv2.weight': [0.00005, '3D']
+      'module.iconv1.weight': [0.00005, '3D']
+      'module.iconv0.weight': [0.00005, '3D']
+    threshold_criteria: Mean_Abs
+
+
+quantizers:
+  svs_quantizer:
+    class: DorefaQuantizer
+    bits_activations: 8
+    bits_weights: 4
+
+
+lr_schedulers:
+  # Learning rate decay scheduler
+   pruning_lr:
+     class: ExponentialLR
+     gamma: 0.9
+
+policies:
+  - pruner:
+      instance_name : 'conv1_1_pruner'
+    starting_epoch: 0
+    ending_epoch: 20
+    frequency: 2
+
+  - pruner:
+      instance_name : 'conv3_2_pruner'
+    starting_epoch: 0
+    ending_epoch: 20
+    frequency: 2
+
+  - pruner:
+      instance_name : 'conv5_1_pruner'
+    starting_epoch: 0
+    ending_epoch: 20
+    frequency: 2
+
+  - pruner:
+      instance_name : 'conv6_1_pruner'
+    starting_epoch: 0
+    ending_epoch: 20
+    frequency: 2
+
+  - pruner:
+      instance_name : 'conv8_1_pruner'
+    starting_epoch: 0
+    ending_epoch: 20
+    frequency: 2
+
+#  - pruner:
+#      instance_name : 'pred4_pruner'
+#    starting_epoch: 1
+#    ending_epoch: 11
+#    frequency: 2
+
+#  - pruner:
+#      instance_name : 'conv1_pruner'
+#    starting_epoch: 1
+#    ending_epoch: 11
+#    frequency: 2
+
+
+  - pruner:
+      instance_name : 'conv3a_pruner'
+    starting_epoch: 20
+    ending_epoch: 200
+    frequency: 2
+
+
+  - pruner:
+      instance_name : 'conv4a_pruner'
+    starting_epoch: 20
+    ending_epoch: 200
+    frequency: 2
+
+  - pruner:
+      instance_name : 'conv5a_pruner'
+    starting_epoch: 20
+    ending_epoch: 200
+    frequency: 2
+
+  - pruner:
+      instance_name : 'conv6a_pruner'
+    starting_epoch: 20
+    ending_epoch: 200
+    frequency: 2
+
+  - pruner:
+      instance_name : 'iconv5_pruner'
+    starting_epoch: 20
+    ending_epoch: 200
+    frequency: 2
+
+  - pruner:
+      instance_name : 'iconv4_pruner'
+    starting_epoch: 20
+    ending_epoch: 200
+    frequency: 2
+
+  - pruner:
+      instance_name : 'iconv3_pruner'
+    starting_epoch: 20
+    ending_epoch: 200
+    frequency: 2
+
+  - pruner:
+      instance_name : 'iconv2_pruner'
+    starting_epoch: 20
+    ending_epoch: 200
+    frequency: 2
+
+  - pruner:
+      instance_name : 'iconv1_pruner'
+    starting_epoch: 20
+    ending_epoch: 200
+    frequency: 2
+
+  - pruner:
+      instance_name : 'iconv0_pruner'
+    starting_epoch: 20
+    ending_epoch: 200
+    frequency: 2
+
+  - regularizer:
+      instance_name: svs_regularizer
+    starting_epoch: 0
+    ending_epoch: 60
+    frequency: 1
+
+  - quantizer:
+      instance_name: svs_quantizer
+      starting_epoch: 0
+      ending_epoch: 200
+      frequency: 1
+
+  - lr_scheduler:
+      instance_name: pruning_lr
+    starting_epoch: 24
+    ending_epoch: 200
+    frequency: 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
